@@ -1,0 +1,116 @@
+import { spawn, exec, SpawnOptions, ExecOptions } from 'child_process';
+import type {
+  ChildProcessExecChunkType,
+  ChildProcessExecOutput,
+  ChildProcessOnChunkHelperOutput,
+} from './types';
+
+export class ChildProcess {
+  static async spawn(
+    cmd: string,
+    args: string[],
+    options?: SpawnOptions,
+  ): Promise<void> {
+    return await new Promise<void>((resolve, reject) => {
+      const proc = spawn(
+        cmd,
+        args,
+        options
+          ? options
+          : {
+              stdio: 'inherit',
+            },
+      );
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject('Child process failed with code ' + code);
+        }
+      });
+    });
+  }
+  static async exec(
+    cmd: string,
+    onChunk?: (type: ChildProcessExecChunkType, chunk: string) => void,
+  ): Promise<void> {
+    return await new Promise<void>((resolve, reject) => {
+      const proc = exec(cmd);
+      let err = '';
+      if (proc.stderr) {
+        proc.stderr.on('data', (chunk) => {
+          if (onChunk) {
+            onChunk('stderr', chunk);
+          }
+          err += chunk;
+        });
+      }
+      if (proc.stdout && onChunk) {
+        proc.stdout.on('data', (chunk) => {
+          onChunk('stdout', chunk);
+        });
+      }
+      proc.on('close', (code) => {
+        if (code !== 0) {
+          reject(Error(err));
+        } else {
+          resolve();
+        }
+      });
+    });
+  }
+  static advancedExec(
+    cmd: string | string[],
+    options?: ExecOptions & {
+      onChunk?: (type: ChildProcessExecChunkType, chunk: string) => void;
+      doNotThrowError?: boolean;
+    },
+  ): ChildProcessExecOutput {
+    const output: ChildProcessExecOutput = {
+      stop: undefined as never,
+      awaiter: undefined as never,
+    };
+    output.awaiter = new Promise<void>((resolve, reject) => {
+      const proc = exec(cmd instanceof Array ? cmd.join(' ') : cmd, options);
+      output.stop = () => {
+        proc.kill();
+      };
+      if (options && options.onChunk) {
+        const onChunk = options.onChunk;
+        if (proc.stderr) {
+          proc.stderr.on('data', (chunk) => {
+            onChunk('stderr', chunk);
+          });
+        }
+        if (proc.stdout) {
+          proc.stdout.on('data', (chunk) => {
+            onChunk('stdout', chunk);
+          });
+        }
+      }
+      proc.on('close', (code) => {
+        if (options && options.doNotThrowError) {
+          resolve();
+        } else if (code !== 0) {
+          reject(code);
+        } else {
+          resolve();
+        }
+      });
+    });
+    return output;
+  }
+  static onChunkHelper(
+    output: ChildProcessOnChunkHelperOutput,
+  ): (type: ChildProcessExecChunkType, chunk: string) => void {
+    output.out = '';
+    output.err = '';
+    return (type, chunk) => {
+      if (type === 'stdout') {
+        output.out += chunk;
+      } else {
+        output.err += chunk;
+      }
+    };
+  }
+}
