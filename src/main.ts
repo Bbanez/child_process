@@ -2,6 +2,7 @@ import { spawn, exec, SpawnOptions, ExecOptions } from 'child_process';
 import type {
   ChildProcessExecChunkType,
   ChildProcessExecOutput,
+  ChildProcessOnChunk,
   ChildProcessOnChunkHelperOutput,
 } from './types';
 
@@ -30,10 +31,7 @@ export class ChildProcess {
       });
     });
   }
-  static async exec(
-    cmd: string,
-    onChunk?: (type: ChildProcessExecChunkType, chunk: string) => void,
-  ): Promise<void> {
+  static async exec(cmd: string, onChunk?: ChildProcessOnChunk): Promise<void> {
     return await new Promise<void>((resolve, reject) => {
       const proc = exec(cmd);
       let err = '';
@@ -62,7 +60,7 @@ export class ChildProcess {
   static advancedExec(
     cmd: string | string[],
     options?: ExecOptions & {
-      onChunk?: (type: ChildProcessExecChunkType, chunk: string) => void;
+      onChunk?: ChildProcessOnChunk;
       doNotThrowError?: boolean;
     },
   ): ChildProcessExecOutput {
