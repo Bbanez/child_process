@@ -29,4 +29,25 @@ describe('Child process', async () => {
     expect(output.err).to.eq('cat: _bla: No such file or directory\n');
     expect(output.out).to.eq('');
   });
+  it('should tail process for 2s', async () => {
+    const proc = ChildProcess.advancedExec(
+      [
+        'docker',
+        'logs',
+        '--tail',
+        '1',
+        '-f',
+        'bcms-instance-6169756ef956f26df700c2d7',
+      ],
+      {
+        onChunk(type, chunk) {
+          process[type].write(chunk);
+        },
+      },
+    );
+    setTimeout(() => {
+      proc.stop();
+    }, 1000);
+    await proc.awaiter;
+  });
 });

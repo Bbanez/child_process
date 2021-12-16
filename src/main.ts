@@ -71,7 +71,12 @@ export class ChildProcess {
     output.awaiter = new Promise<void>((resolve, reject) => {
       const proc = exec(cmd instanceof Array ? cmd.join(' ') : cmd, options);
       output.stop = () => {
-        proc.kill();
+        const result = proc.kill();
+        if (result) {
+          resolve();
+        } else {
+          reject(Error('Failed to kill process'));
+        }
       };
       if (options && options.onChunk) {
         const onChunk = options.onChunk;
