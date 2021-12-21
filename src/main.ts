@@ -26,6 +26,13 @@ export class ChildProcess {
         if (code === 0) {
           resolve();
         } else {
+          reject(
+            Error(
+              `Failed to spawn "${cmd} ${args.join(
+                ' ',
+              )}" with status code ${code}`,
+            ),
+          );
           reject('Child process failed with code ' + code);
         }
       });
@@ -50,7 +57,11 @@ export class ChildProcess {
       }
       proc.on('close', (code) => {
         if (code !== 0) {
-          reject(Error(err));
+          reject(
+            Error(
+              `Failed to execute "${cmd}" with status code ${code}. \n\n ${err}`,
+            ),
+          );
         } else {
           resolve();
         }
@@ -95,7 +106,7 @@ export class ChildProcess {
         if (options && options.doNotThrowError) {
           resolve();
         } else if (code !== 0) {
-          reject(code);
+          reject(Error(`Failed to execute "${cmd}" with status code ${code}`));
         } else {
           resolve();
         }
